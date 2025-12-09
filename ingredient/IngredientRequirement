@@ -1,0 +1,17 @@
+public class IngredientRequirement {
+    private String ingredientName;
+    private IngredientState requiredState;
+
+    public IngredientRequirement(String ingredientName, IngredientState requiredState) {
+        this.ingredientName = ingredientName;
+        this.requiredState = requiredState;
+    }
+
+    public String getIngredientName() {
+        return ingredientName;
+    }
+
+    public IngredientState getRequiredState() {
+        return requiredState;
+    }
+}
