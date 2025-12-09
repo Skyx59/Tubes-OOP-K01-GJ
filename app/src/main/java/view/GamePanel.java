@@ -52,8 +52,8 @@ public class GamePanel extends JPanel implements Runnable{
         this.addKeyListener(keyH);
         this.setFocusable(true);
 
-        players[0] = new Player(this, keyH);
-        players[1] = new Player(this,keyH);
+        players[0] = new Player(this, keyH, "red");
+        players[1] = new Player(this,keyH, "blue");
 
         players[1].x = 386;
         players[1].y = 239;
@@ -115,4 +115,5 @@ public class GamePanel extends JPanel implements Runnable{
         g2.dispose();
     }
 }
+
 
