@@ -18,7 +18,7 @@ public class Recipe {
     }
 
     /** 
-     * Validate if a dish matches all recipe requirements
+     * Validasi dish matches untuk recipe requirements
      */
     public boolean matchDish(Dish dish) {
         List<Preparable> components = dish.getComponents();
