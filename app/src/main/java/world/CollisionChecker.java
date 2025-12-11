@@ -1,8 +1,10 @@
-package map;
+package world;
 
-import entity.*;
-import view.*;
+import entity.Entity;
+import entity.Player;
 import java.awt.Rectangle;
+import view.GamePanel;
+
 public class CollisionChecker {
     GamePanel gp;
 
@@ -41,14 +43,14 @@ public class CollisionChecker {
         int tileNum1, tileNum2;
 
         switch (entity.direction) {
-            case "up":
-            case "down":
+            case UP:
+            case DOWN:
                 // Jika bergerak vertikal, cek kolom yang sama di baris tujuan
                 tileNum1 = gp.tileM.mapTileNum[entityLeftCol][entityTopRow]; // Sudut kiri atas/bawah
                 tileNum2 = gp.tileM.mapTileNum[entityRightCol][entityTopRow]; // Sudut kanan atas/bawah
                 break;
-            case "left":
-            case "right":
+            case LEFT:
+            case RIGHT:
                 // Jika bergerak horizontal, cek baris yang sama di kolom tujuan
                 tileNum1 = gp.tileM.mapTileNum[entityLeftCol][entityTopRow]; // Sudut kiri atas/bawah
                 tileNum2 = gp.tileM.mapTileNum[entityLeftCol][entityBottomRow]; // Sudut kanan atas/bawah

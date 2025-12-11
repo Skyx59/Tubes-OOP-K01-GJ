@@ -2,6 +2,7 @@ package entity;
 
 import java.awt.Rectangle;
 import java.awt.image.BufferedImage;
+import util.Direction;
 
 public class Entity {
     public int x,y;
@@ -9,7 +10,7 @@ public class Entity {
     public BufferedImage up1, up2, down1, down2, left1, left2, right1, right2;
     public Rectangle solidArea;
     public boolean collisionOn = false;
-    public String direction;
+    public Direction direction;
     public boolean isMoving = false;
     public int goalX, goalY;
     public int spriteCounter = 0;

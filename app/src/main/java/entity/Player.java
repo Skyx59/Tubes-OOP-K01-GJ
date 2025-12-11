@@ -7,20 +7,25 @@ import java.io.IOException;
 
 import javax.imageio.ImageIO;
 
-import java.awt.Color;
+import controller.InputController;
+import controller.KeyHandler;
+import util.Direction;
+import view.GamePanel;
 
-import view.*;
-import controller.*;
+public class Player extends Entity {
 
-public class Player extends Entity{
-    GamePanel gp;
-    KeyHandler keyH; 
-    String color;
+    public final Chef chef = new Chef();     // Chef attached to this Player
+    private final GamePanel gp;
+    private final KeyHandler keyH;
+    private final InputController inputController;
 
-    public Player(GamePanel gp, KeyHandler keyH, String color){
+    private final String color;
+
+    public Player(GamePanel gp, KeyHandler kh, String color, InputController inputC){
         this.gp = gp;
-        this.keyH = keyH;
+        this.keyH = kh;
         this.color = color;
+        this.inputController = inputC;
 
         solidArea = new Rectangle();
         solidArea.x = 8;
@@ -29,185 +34,123 @@ public class Player extends Entity{
         solidArea.height = 32;
 
         setDefaultValues();
-        getPlayerImage();
+        loadImages();
     }
 
-    public void setDefaultValues(){
-
+    private void setDefaultValues(){
         x = 290;
         y = 95;
         speed = 1;
-        direction = "down";
+        direction = Direction.DOWN;
     }
 
-    public void getPlayerImage(){
-
-        try{
-
-            up1 = ImageIO.read(getClass().getResourceAsStream("/player/"+ color + "_up_1.png"));
-            up2 = ImageIO.read(getClass().getResourceAsStream("/player/"+ color + "_up_2.png"));
-            down1 = ImageIO.read(getClass().getResourceAsStream("/player/"+ color + "_down_1.png"));
-            down2 = ImageIO.read(getClass().getResourceAsStream("/player/"+ color + "_down_2.png"));
-            left1 = ImageIO.read(getClass().getResourceAsStream("/player/"+ color + "_left_1.png"));
-            left2 = ImageIO.read(getClass().getResourceAsStream("/player/"+ color + "_left_2.png"));
+    private void loadImages() {
+        try {
+            up1    = ImageIO.read(getClass().getResourceAsStream("/player/"+ color + "_up_1.png"));
+            up2    = ImageIO.read(getClass().getResourceAsStream("/player/"+ color + "_up_2.png"));
+            down1  = ImageIO.read(getClass().getResourceAsStream("/player/"+ color + "_down_1.png"));
+            down2  = ImageIO.read(getClass().getResourceAsStream("/player/"+ color + "_down_2.png"));
+            left1  = ImageIO.read(getClass().getResourceAsStream("/player/"+ color + "_left_1.png"));
+            left2  = ImageIO.read(getClass().getResourceAsStream("/player/"+ color + "_left_2.png"));
             right1 = ImageIO.read(getClass().getResourceAsStream("/player/"+ color + "_right_1.png"));
             right2 = ImageIO.read(getClass().getResourceAsStream("/player/"+ color + "_right_2.png"));
-
-        }catch(IOException e){
+        } catch (IOException e) {
             e.printStackTrace();
         }
     }
 
+  
     public void update(){
+        if (gp.gameState != gp.playState) return;
+
+        // Handle interact button --------------------------------------
+        if (keyH.interactPressed) {
+            interact();
+            keyH.interactPressed = false;
+        }
+
+        // Movement identical to your original --------------------------
         if (!isMoving) {
-            // Cek input hanya jika player tidak sedang bergerak
-            if(keyH.upPressed == true){
-                direction = "up";
+
+            if (keyH.upPressed) {
+                direction = Direction.UP;
                 isMoving = true;
                 goalX = x;
-                goalY = y - gp.tileSize; // Target y adalah 1 tile ke atas
+                goalY = y - gp.tileSize;
             }
-            else if(keyH.downPressed == true){
-                direction = "down";
+            else if (keyH.downPressed) {
+                direction = Direction.DOWN;
                 isMoving = true;
                 goalX = x;
-                goalY = y + gp.tileSize; // Target y adalah 1 tile ke bawah
+                goalY = y + gp.tileSize;
             }
-            else if(keyH.leftPressed == true){
-                direction = "left";
+            else if (keyH.leftPressed) {
+                direction = Direction.LEFT;
                 isMoving = true;
-                goalX = x - gp.tileSize; // Target x adalah 1 tile ke kiri
+                goalX = x - gp.tileSize;
                 goalY = y;
-            }else if(keyH.rightPressed == true){
-                direction = "right";
+            }
+            else if (keyH.rightPressed) {
+                direction = Direction.RIGHT;
                 isMoving = true;
-                goalX = x + gp.tileSize; // Target x adalah 1 tile ke kanan
+                goalX = x + gp.tileSize;
                 goalY = y;
             }
 
             spriteCounter++;
             if(spriteCounter > 200){
-                if(spriteNum == 1){
-                    spriteNum = 2;
-                }
-                else if(spriteNum == 2){
-                    spriteNum = 1;
-                }
+                spriteNum = (spriteNum == 1 ? 2 : 1);
                 spriteCounter = 0;
             }
         }
-        
-        // === Bagian 2: Melakukan Pergerakan ke Tujuan ===
+
         if (isMoving) {
-            
-            // Cek Tabrakan di tile target SEBELUM bergerak
             collisionOn = false;
-            gp.cChecker.checkTile(this); // Asumsi checkTile() diperbarui untuk mengecek goalX/goalY
-            // CATATAN: Karena checkTile yang sebelumnya Anda miliki hanya melihat KeyHandler, 
-            // Anda perlu memastikan CollisionChecker membandingkan goalX/goalY dengan tile.
-            gp.cChecker.checkPlayer(this, gp.players, gp.acivePlayerIndex);
-            
-            // Jika TIDAK ada tabrakan, lakukan pergerakan
-            if (collisionOn == false) {
-                
-                // Pergerakan satu langkah (speed) menuju goal
+            gp.cChecker.checkTile(this);
+            gp.cChecker.checkPlayer(this, gp.players, gp.activePlayerIndex);
+
+            if (!collisionOn) {
                 switch (direction) {
-                    case "up":
+                    case UP:
                         y -= speed;
-                        if (y <= goalY) { // Cek jika sudah mencapai atau melewati target
-                            y = goalY;
-                            isMoving = false; // Berhenti bergerak
-                            direction = "up";
-                        }
+                        if (y <= goalY) { y = goalY; isMoving = false; }
                         break;
-                    case "down":
+                    case DOWN:
                         y += speed;
-                        if (y >= goalY) {
-                            y = goalY;
-                            isMoving = false;
-                            direction = "down";
-                        }
+                        if (y >= goalY) { y = goalY; isMoving = false; }
                         break;
-                    case "left":
+                    case LEFT:
                         x -= speed;
-                        if (x <= goalX) {
-                            x = goalX;
-                            isMoving = false;
-                            direction = "left";
-                        }
+                        if (x <= goalX) { x = goalX; isMoving = false; }
                         break;
-                    case "right":
+                    case RIGHT:
                         x += speed;
-                        if (x >= goalX) {
-                            x = goalX;
-                            isMoving = false;
-                            direction = "right";
-                        }
+                        if (x >= goalX) { x = goalX; isMoving = false; }
                         break;
                 }
             } else {
-                // Jika ada tabrakan, batalkan pergerakan dan reset status
-                isMoving = false; 
-                switch (direction) {
-                    case "up":
-                        direction = "up";
-                        break;
-                    case "down":
-                        direction = "down";
-                        break;
-                    case "left":
-                        direction = "left";
-                        break;
-                    case "right":
-                        direction = "right";
-                        break;
-                // TIDAK perlu mengubah x/y karena tabrakan mencegah inisiasi pergerakan
-                }
+                isMoving = false;
             }
         }
+        chef.setGridPosition(x / gp.tileSize, y / gp.tileSize);
     }
 
-    public void draw(Graphics2D g2){
-        //g2.setColor(Color.black);
-        //g2.fillRect(x, y, gp.tileSize, gp.tileSize);
+    // Player triggers InputController
+    private void interact() {
+        inputController.onInteract(this, chef);
+    }
 
-        BufferedImage image = null;
+ 
+    public void draw(Graphics2D g2){
+        BufferedImage img = null;
 
         switch(direction){
-            case "up":
-                if(spriteNum == 1){
-                    image = up1;
-                }
-                if(spriteNum == 2){
-                    image = up2;
-                }
-                break;
-            case "down":
-                if(spriteNum == 1){
-                    image = down1;
-                }
-                if(spriteNum == 2){
-                    image = down2;
-                }
-                break;
-            case "left":
-                if(spriteNum == 1){
-                    image = left1;
-                }
-                if(spriteNum == 2){
-                    image = left2;
-                }
-                break;
-            case "right":
-                if(spriteNum == 1){
-                    image = right1;
-                }
-                if(spriteNum == 2){
-                    image = right2;
-                }
-                break;
+            case UP:    img = (spriteNum == 1 ? up1 : up2); break;
+            case DOWN:  img = (spriteNum == 1 ? down1 : down2); break;
+            case LEFT:  img = (spriteNum == 1 ? left1 : left2); break;
+            case RIGHT: img = (spriteNum == 1 ? right1 : right2); break;
         }
 
-        g2.drawImage(image, x, y, gp.tileSize, gp.tileSize, null);
+        g2.drawImage(img, x, y, gp.tileSize, gp.tileSize, null);
     }
 }
