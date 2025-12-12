@@ -1,0 +1,6 @@
+
+// Asumsi Anda menambahkan boolean interactPressed di KeyHandler (misal tombol ENTER)
+if (keyH.interactPressed) {
+    interact();
+    keyH.interactPressed = false; // Reset agar tidak terpanggil berkali-kali (Debounce)
+}
