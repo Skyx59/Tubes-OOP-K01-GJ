@@ -1,0 +1,27 @@
+package model.entity;
+
+import java.awt.Rectangle;
+import java.awt.image.BufferedImage;
+
+public class Entity {
+    public int x,y;
+    public double px;
+    public double py;
+    public int speed;
+    public double MOVE_SPEED = 0.45;
+    public BufferedImage up1, up2, down1, down2, left1, left2, right1, right2;
+    public Rectangle solidArea;
+    public boolean collisionOn = false;
+    public String direction;
+    public boolean isMoving = false;
+    public int goalX, goalY;
+    public int spriteCounter = 0;
+    public int spriteNum = 1;
+
+    // --- Added for interaction/holding item ---
+    public String heldItem = null; // "bun","meat","cheese","lettuce","tomato" or null
+    public BufferedImage heldItemImage = null;
+    public boolean isInteracting = false; // sedang mengambil bahan
+    public int interactCounter = 0;
+    public int INTERACT_DURATION = 12; // frames (at 60fps ~ 0.2s)
+}
