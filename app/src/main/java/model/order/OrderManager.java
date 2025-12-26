@@ -53,7 +53,7 @@ public class OrderManager {
         List<String> req;
         int reward, penalty, time;
 
-        // matching resep berdasarkan implementasi Anda
+        // matching resep berdasarkan implementasi
         switch (name) {
             case "Classic Burger" -> {
                 req = Arrays.asList("bun","cooked_meat");

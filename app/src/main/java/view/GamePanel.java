@@ -1,13 +1,18 @@
 package view;
 
+import java.awt.AlphaComposite;
 import java.awt.Color;
+import java.awt.Composite;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
+import java.awt.image.BufferedImage;
+import java.io.IOException;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 
+import javax.imageio.ImageIO;
 import javax.swing.JPanel;
 
 import controller.KeyHandler;
@@ -54,6 +59,21 @@ public class GamePanel extends JPanel implements Runnable{
     public final int stageSelectState = 4;
     public final int stagePreviewState = 5;
     public final int resultState = 6;
+
+    private static final float BUTTON_SCALE = 0.65f;
+    private static final int BUTTON_GAP = 3;
+    private static final float RESULT_BTN_SCALE = 0.35f;
+    private static final int RESULT_BTN_GAP = 16;
+    BufferedImage imgTitleBG;
+    BufferedImage btnStart, btnHowToPlay, btnExit;
+    BufferedImage btnStage1, btnStage2, btnStage3;
+    BufferedImage imgStageOver;
+    BufferedImage imgTimesUp;
+    BufferedImage btnRetry;
+    BufferedImage btnBackToStage;
+
+    private int resultCommandNum = 0;
+
 
     // Stage config
     public StageConfig stageConfig;
@@ -144,6 +164,26 @@ public class GamePanel extends JPanel implements Runnable{
         // OrderManager sengaja TIDAK dibuat di constructor.
         // Ia dibuat saat startStage() supaya reward/penalty/maks order mengikuti stageConfig.
         orderManager = null;
+
+        try {
+            imgTitleBG = ImageIO.read(getClass().getResource("/stage/title_bg.png"));
+
+            btnStart = cropNonTransparent(ImageIO.read(getClass().getResource("/stage/btn_start.png")));
+            btnHowToPlay = cropNonTransparent(ImageIO.read(getClass().getResource("/stage/btn_howtoplay.png")));
+            btnExit = cropNonTransparent(ImageIO.read(getClass().getResource("/stage/btn_exit.png")));
+
+            btnStage1 = cropNonTransparent(ImageIO.read(getClass().getResource("/stage/btn_stage1.png")));
+            btnStage2 = cropNonTransparent(ImageIO.read(getClass().getResource("/stage/btn_stage2.png")));
+            btnStage3 = cropNonTransparent(ImageIO.read(getClass().getResource("/stage/btn_stage3.png")));
+
+            imgStageOver = cropNonTransparent(ImageIO.read(getClass().getResource("/stage/stage_over.png")));
+            imgTimesUp   = cropNonTransparent(ImageIO.read(getClass().getResource("/stage/times_up.png")));
+            btnRetry     = cropNonTransparent(ImageIO.read(getClass().getResource("/stage/btn_retry.png")));
+            btnBackToStage = cropNonTransparent(ImageIO.read(getClass().getResource("/stage/btn_back_to_stage.png")));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
     }
 
     public void startGameThread(){
@@ -218,17 +258,24 @@ public class GamePanel extends JPanel implements Runnable{
     }
 
     public void updateStageSelect() {
+
+        // max index yang unlocked
+        int maxUnlockedIndex = 0;
+        for (int i = 0; i < stageManager.stages.size(); i++) {
+            if (stageManager.stages.get(i).isUnlocked) maxUnlockedIndex = i;
+        }
+
+        // pastikan cursor tidak pernah lewat batas unlocked
+        if (selectedStageIndex > maxUnlockedIndex) selectedStageIndex = maxUnlockedIndex;
+        if (selectedStageIndex < 0) selectedStageIndex = 0;
+
         if (keyH.upPressed) {
-            selectedStageIndex--;
-            if (selectedStageIndex < 0)
-                selectedStageIndex = stageManager.stages.size() - 1;
+            if (selectedStageIndex > 0) selectedStageIndex--;
             keyH.upPressed = false;
         }
 
         if (keyH.downPressed) {
-            selectedStageIndex++;
-            if (selectedStageIndex >= stageManager.stages.size())
-                selectedStageIndex = 0;
+            if (selectedStageIndex < maxUnlockedIndex) selectedStageIndex++;
             keyH.downPressed = false;
         }
 
@@ -241,11 +288,12 @@ public class GamePanel extends JPanel implements Runnable{
             keyH.enterPressed = false;
         }
 
-        if (keyH.switchPressed) { // back
+        if (keyH.switchPressed) {
             gameState = titleState;
             keyH.switchPressed = false;
         }
     }
+
 
     public void updateStagePreview() {
         if (keyH.enterPressed) {
@@ -260,16 +308,39 @@ public class GamePanel extends JPanel implements Runnable{
     }
 
     public void updateResultState() {
+
+        // navigasi 2 tombol: Retry / Back
+        if (keyH.upPressed) {
+            resultCommandNum--;
+            if (resultCommandNum < 0) resultCommandNum = 1;
+            keyH.upPressed = false;
+        }
+
+        if (keyH.downPressed) {
+            resultCommandNum++;
+            if (resultCommandNum > 1) resultCommandNum = 0;
+            keyH.downPressed = false;
+        }
+
+        // ENTER: execute
         if (keyH.enterPressed) {
-            gameState = stageSelectState;
+            if (resultCommandNum == 0) {
+                // RETRY
+                startStage(currentStage);
+            } else {
+                // BACK TO STAGE SELECT
+                gameState = stageSelectState;
+            }
             keyH.enterPressed = false;
         }
 
+        //SPACE bisa juga sebagai shortcut kembali
         if (keyH.switchPressed) {
-            startStage(currentStage);
+            gameState = stageSelectState;
             keyH.switchPressed = false;
         }
     }
+
 
     // -----------------------
     // STAGE START (baru)
@@ -497,6 +568,8 @@ public class GamePanel extends JPanel implements Runnable{
 
         if (gameState == titleState) {
             drawTitleScreen(g2);
+            g2.dispose();
+            return;
         } else if (gameState == playState) {
 
             // DRAW TILES
@@ -601,37 +674,51 @@ public class GamePanel extends JPanel implements Runnable{
     // -----------------------
 
     public void drawTitleScreen(Graphics2D g2) {
-        g2.setColor(new Color(0, 50, 0));
-        g2.fillRect(0, 0, screenWidth, screenHeight);
 
-        g2.setFont(new Font("Arial", Font.BOLD, 70));
-        g2.setColor(Color.WHITE);
-        String text = "NimonsCooked";
-        int x = getXforCenteredText(g2, text);
-        int y = tileSize * 2;
-        g2.drawString(text, x, y);
+    // === DRAW FULLSCREEN BG (FIX #1) ===
+    int bgW = imgTitleBG.getWidth();
+    int bgH = imgTitleBG.getHeight();
 
-        g2.setFont(new Font("Arial", Font.PLAIN, 32));
-        g2.setColor(Color.YELLOW);
+    float scale = Math.max(
+        (float) screenWidth / bgW,
+        (float) screenHeight / bgH
+    );
 
-        text = "START GAME";
-        x = getXforCenteredText(g2, text);
-        y += tileSize * 3;
-        g2.drawString(text, x, y);
-        if(commandNum == 0) g2.drawString(">", x - tileSize, y);
+    int drawW = Math.round(bgW * scale);
+    int drawH = Math.round(bgH * scale);
 
-        text = "HOW TO PLAY";
-        x = getXforCenteredText(g2, text);
-        y += tileSize;
-        g2.drawString(text, x, y);
-        if(commandNum == 1) g2.drawString(">", x - tileSize, y);
+    int bgX = (screenWidth - drawW) / 2;
+    int bgY = (screenHeight - drawH) / 2;
 
-        text = "EXIT";
-        x = getXforCenteredText(g2, text);
-        y += tileSize;
-        g2.drawString(text, x, y);
-        if(commandNum == 2) g2.drawString(">", x - tileSize, y);
+    g2.drawImage(imgTitleBG, bgX, bgY, drawW, drawH, null);
+
+    // === BUTTON LAYOUT (FIX #2) ===
+    BufferedImage[] buttons = { btnStart, btnHowToPlay, btnExit };
+
+    int bw = Math.round(btnStart.getWidth() * BUTTON_SCALE);
+    int bh = Math.round(btnStart.getHeight() * BUTTON_SCALE);
+
+    int totalHeight =
+            bh * buttons.length +
+            BUTTON_GAP * (buttons.length - 1);
+
+    int startY = (screenHeight - totalHeight) / 2;
+    int centerX = screenWidth / 2;
+
+    for (int i = 0; i < buttons.length; i++) {
+        drawButtonScaled(
+            g2,
+            buttons[i],
+            centerX,
+            startY + i * (bh + BUTTON_GAP),
+            bw,
+            bh,
+            commandNum == i
+        );
     }
+}
+
+
 
     public void drawInstructionScreen(Graphics2D g2) {
         g2.setColor(new Color(0, 0, 50));
@@ -695,34 +782,96 @@ public class GamePanel extends JPanel implements Runnable{
     }
 
     public void drawStageSelectScreen(Graphics2D g2) {
-        g2.setColor(Color.BLACK);
-        g2.fillRect(0, 0, screenWidth, screenHeight);
 
-        g2.setFont(new Font("Arial", Font.BOLD, 36));
-        g2.setColor(Color.WHITE);
-        g2.drawString("Stage Select", 240, 60);
+        // ===== BG fullscreen (cover) =====
+        int bgW = imgTitleBG.getWidth();
+        int bgH = imgTitleBG.getHeight();
 
-        g2.setFont(new Font("Arial", Font.PLAIN, 24));
+        float s = Math.max((float) screenWidth / bgW, (float) screenHeight / bgH);
+        int drawW = Math.round(bgW * s);
+        int drawH = Math.round(bgH * s);
+        int bgX = (screenWidth - drawW) / 2;
+        int bgY = (screenHeight - drawH) / 2;
 
-        int y = 140;
+        g2.drawImage(imgTitleBG, bgX, bgY, drawW, drawH, null);
 
+
+        int panelW = 520;
+        int panelH = 383;
+        int panelX = (screenWidth - panelW) / 2;
+        int panelY = 82;
+
+        g2.setColor(new Color(0, 0, 0, 140));
+        g2.fillRoundRect(panelX, panelY, panelW, panelH, 32, 32);
+
+        // ===== title Stage Select (simple & jelas) =====
+        g2.setFont(new Font("Arial", Font.BOLD, 44));
+        g2.setColor(new Color(220, 60, 60));
+        String title = "Stage Select";
+        g2.drawString(title, getXforCenteredText(g2, title), 113);
+
+        BufferedImage[] stageBtns = { btnStage1, btnStage2, btnStage3 };
+
+        float stageScale = 0.47f;      // kecilkan dari 1: sesuaikan 0.65 - 0.75 jika perlu
+        int gap = 28;                  // jarak antar tombol (jelas)
+
+        int bw = Math.round(stageBtns[0].getWidth() * stageScale);
+        int bh = Math.round(stageBtns[0].getHeight() * stageScale);
+
+        int n = stageBtns.length;
+        int totalH = n * bh + (n - 1) * gap;
+
+        int startY = (screenHeight - totalH) / 2 + 20; // sedikit turun agar tidak nabrak title
+        int centerX = screenWidth / 2;
+
+        // hitung max unlocked (agar tombol locked didim-kan)
+        int maxUnlockedIndex = 0;
         for (int i = 0; i < stageManager.stages.size(); i++) {
-
-            StageMeta s = stageManager.stages.get(i);
-
-            if (i == selectedStageIndex) g2.setColor(Color.YELLOW);
-            else if (!s.isUnlocked) g2.setColor(Color.GRAY);
-            else if (s.isCleared) g2.setColor(Color.GREEN);
-            else g2.setColor(Color.WHITE);
-
-            g2.drawString(s.name + "  (Target: " + s.targetScore + ")", 80, y);
-            y += 40;
+            if (stageManager.stages.get(i).isUnlocked) maxUnlockedIndex = i;
         }
 
-        g2.setFont(new Font("Arial", Font.ITALIC, 18));
-        g2.setColor(Color.LIGHT_GRAY);
-        g2.drawString("ENTER: Preview | SPACE: Back", 200, screenHeight - 40);
+        for (int i = 0; i < n; i++) {
+
+            boolean selected = (i == selectedStageIndex);
+            boolean unlocked = (i <= maxUnlockedIndex);
+
+            float alpha;
+            if (!unlocked) alpha = 0.18f;     // locked sangat redup
+            else if (selected) alpha = 1.0f;  // selected solid
+            else alpha = 0.55f;               // unlocked tapi tidak dipilih
+
+            int w = bw;
+            int h = bh;
+
+            // penanda selection: sedikit dibesarkan (tanpa butuh asset baru)
+            if (selected) {
+                w = Math.round(bw * 1.06f);
+                h = Math.round(bh * 1.06f);
+            }
+
+            int x = centerX - w / 2;
+            int y = startY + i * (bh + gap) + (bh - h) / 2;
+
+            Composite old = g2.getComposite();
+            g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, alpha));
+            g2.drawImage(stageBtns[i], x, y, w, h, null);
+            g2.setComposite(old);
+
+            // tambahan highlight sederhana untuk selected (opsional tapi sangat membantu)
+            if (selected) {
+                g2.setColor(new Color(255, 255, 255, 120));
+                g2.drawRoundRect(x - 6, y - 6, w + 12, h + 12, 28, 28);
+            }
+        }
+
+        // ===== footer =====
+        g2.setFont(new Font("Arial", Font.PLAIN, 18));
+        g2.setColor(new Color(230, 230, 230, 200));
+        String footer = "ENTER: Select   |   SPACE: Back";
+        g2.drawString(footer, getXforCenteredText(g2, footer), screenHeight - 25);
     }
+
+
 
     public void drawStagePreviewScreen(Graphics2D g2) {
         g2.setColor(new Color(20,20,20));
@@ -742,26 +891,140 @@ public class GamePanel extends JPanel implements Runnable{
         tileM.draw(g2);
     }
 
-    public void drawResultScreen(Graphics2D g2) {
-        g2.setColor(new Color(0, 0, 0, 180));
+        public void drawResultScreen(Graphics2D g2) {
+
+        // 1) gambar map terakhir sebagai background (biar nggak hitam)
+        tileM.draw(g2);
+
+        // 2) overlay gelap
+        g2.setColor(new Color(0, 0, 0, 140));
         g2.fillRect(0, 0, screenWidth, screenHeight);
 
-        boolean pass = score >= currentStage.targetScore;
+        // 3) panel gelap di tengah
+        int panelW = (int)(screenWidth * 0.82);
+        int panelH = (int)(screenHeight * 0.78);
+        int panelX = (screenWidth - panelW) / 2;
+        int panelY = (screenHeight - panelH) / 2;
 
-        g2.setFont(new Font("Arial", Font.BOLD, 48));
-        g2.setColor(pass ? Color.GREEN : Color.RED);
-        g2.drawString(pass ? "STAGE CLEARED!" : "STAGE FAILED!", 140, 120);
+        g2.setColor(new Color(0, 0, 0, 120));
+        g2.fillRoundRect(panelX, panelY, panelW, panelH, 30, 30);
 
-        g2.setFont(new Font("Arial", Font.PLAIN, 28));
+        // 4) gambar "STAGE OVER!" dan "TIME'S UP!" (centered)
+        int centerX = screenWidth / 2;
+
+        // stage over
+        int stageOverY = panelY + 37;
+        drawImageCenteredScaled(g2, imgStageOver, centerX, stageOverY, 0.55f);
+
+        // times up (di bawahnya)
+        int timesUpY = stageOverY + 37;
+        drawImageCenteredScaled(g2, imgTimesUp, centerX, timesUpY, 0.37f);
+
+        // 5) teks score
+        g2.setFont(new Font("Arial", Font.BOLD, 13));
         g2.setColor(Color.WHITE);
-        g2.drawString("Score: " + score, 220, 190);
-        g2.drawString("Target: " + currentStage.targetScore, 220, 230);
-        g2.drawString("Orders Success: " + ordersCompleted, 220, 270);
-        g2.drawString("Orders Failed: " + ordersFailed, 220, 310);
 
-        g2.setFont(new Font("Arial", Font.PLAIN, 20));
-        g2.setColor(Color.YELLOW);
-        g2.drawString("ENTER: Back to Stage Select", 180, 380);
-        g2.drawString("SPACE: Replay Stage", 220, 410);
+        int textStartY = timesUpY + 53;
+        int lineGap = 31;
+
+        String s1 = "Score: " + score;
+        String s2 = "Target: " + (currentStage != null ? currentStage.targetScore : 0);
+        String s3 = "Orders Completed: " + ordersCompleted;
+        String s4 = "Orders Failed: " + ordersFailed;
+
+        int textX = centerX - 110;
+        g2.drawString(s1, textX, textStartY);
+        g2.drawString(s2, textX, textStartY + lineGap);
+        g2.drawString(s3, textX, textStartY + lineGap * 2);
+        g2.drawString(s4, textX, textStartY + lineGap * 3);
+
+        // 6) tombol Retry + Back to Stage (pakai PNG)
+        BufferedImage[] buttons = { btnRetry, btnBackToStage };
+
+        int bw = Math.round(buttons[0].getWidth() * RESULT_BTN_SCALE);
+        int bh = Math.round(buttons[0].getHeight() * RESULT_BTN_SCALE);
+
+        int totalH = bh * buttons.length + RESULT_BTN_GAP * (buttons.length - 1);
+        int startY = panelY + panelH - totalH - 25; // posisikan dekat bawah panel
+
+        for (int i = 0; i < buttons.length; i++) {
+            boolean selected = (i == resultCommandNum);
+
+            int x = centerX - bw / 2;
+            int y = startY + i * (bh + RESULT_BTN_GAP);
+
+            Composite old = g2.getComposite();
+            float alpha = selected ? 1.0f : 0.55f;
+            g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, alpha));
+            g2.drawImage(buttons[i], x, y, bw, bh, null);
+            g2.setComposite(old);
+
+            // highlight selection (tipis saja, tapi jelas)
+            if (selected) {
+                g2.setColor(new Color(255, 255, 255, 140));
+                g2.drawRoundRect(x - 6, y - 6, bw + 12, bh + 12, 24, 24);
+            }
+        }
+
+        // 7) footer hint
+        g2.setFont(new Font("Arial", Font.PLAIN, 18));
+        g2.setColor(new Color(230, 230, 230, 200));
+        String footer = "ENTER: Select   |   UP/DOWN: Move   |   SPACE: Back";
+        g2.drawString(footer, getXforCenteredText(g2, footer), screenHeight - 18);
+    }
+
+
+
+    private void drawButtonScaled(
+        Graphics2D g2,
+        BufferedImage img,
+        int centerX,
+        int y,
+        int w,
+        int h,
+        boolean selected) {
+        int x = centerX - w / 2;
+
+        float alpha = selected ? 1.0f : 0.45f;
+        Composite old = g2.getComposite();
+        g2.setComposite(AlphaComposite.getInstance(
+                AlphaComposite.SRC_OVER, alpha));
+
+        g2.drawImage(img, x, y, w, h, null);
+
+        g2.setComposite(old);
+    }
+
+
+    private static BufferedImage cropNonTransparent(BufferedImage src) {
+        int w = src.getWidth();
+        int h = src.getHeight();
+
+        int minX = w, minY = h, maxX = -1, maxY = -1;
+
+        for (int y = 0; y < h; y++) {
+            for (int x = 0; x < w; x++) {
+                int a = (src.getRGB(x, y) >>> 24) & 0xFF;
+                if (a != 0) {
+                    if (x < minX) minX = x;
+                    if (y < minY) minY = y;
+                    if (x > maxX) maxX = x;
+                    if (y > maxY) maxY = y;
+                }
+            }
+        }
+
+        // kalau semuanya transparan, kembalikan src
+        if (maxX < minX || maxY < minY) return src;
+
+        return src.getSubimage(minX, minY, (maxX - minX + 1), (maxY - minY + 1));
+    }
+
+    private void drawImageCenteredScaled(Graphics2D g2, BufferedImage img, int centerX, int y, float scale) {
+        if (img == null) return;
+        int w = Math.round(img.getWidth() * scale);
+        int h = Math.round(img.getHeight() * scale);
+        int x = centerX - w / 2;
+        g2.drawImage(img, x, y - h / 2, w, h, null);
     }
 }
