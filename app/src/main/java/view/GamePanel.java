@@ -795,9 +795,14 @@ public class GamePanel extends JPanel implements Runnable{
 
         g2.drawImage(imgTitleBG, bgX, bgY, drawW, drawH, null);
 
-        // ===== overlay gelap =====
+
+        int panelW = 520;
+        int panelH = 383;
+        int panelX = (screenWidth - panelW) / 2;
+        int panelY = 82;
+
         g2.setColor(new Color(0, 0, 0, 140));
-        g2.fillRect(0, 0, screenWidth, screenHeight);
+        g2.fillRoundRect(panelX, panelY, panelW, panelH, 32, 32);
 
         // ===== title Stage Select (simple & jelas) =====
         g2.setFont(new Font("Arial", Font.BOLD, 44));
@@ -805,10 +810,8 @@ public class GamePanel extends JPanel implements Runnable{
         String title = "Stage Select";
         g2.drawString(title, getXforCenteredText(g2, title), 113);
 
-        // ===== tombol stage: pakai PNG yang Anda sediakan (bukan btnStart) =====
         BufferedImage[] stageBtns = { btnStage1, btnStage2, btnStage3 };
 
-        // ukuran & jarak (di sini yang Anda butuhkan: tombol tidak kebesaran, gap tidak sempit)
         float stageScale = 0.47f;      // kecilkan dari 1: sesuaikan 0.65 - 0.75 jika perlu
         int gap = 28;                  // jarak antar tombol (jelas)
 
@@ -890,14 +893,14 @@ public class GamePanel extends JPanel implements Runnable{
 
         public void drawResultScreen(Graphics2D g2) {
 
-        // 1) gambar map terakhir sebagai background (biar tidak hitam)
+        // 1) gambar map terakhir sebagai background (biar nggak hitam)
         tileM.draw(g2);
 
-        // 2) overlay gelap (sesuai style UI Anda)
+        // 2) overlay gelap
         g2.setColor(new Color(0, 0, 0, 140));
         g2.fillRect(0, 0, screenWidth, screenHeight);
 
-        // 3) panel gelap di tengah (optional tapi mirip contoh)
+        // 3) panel gelap di tengah
         int panelW = (int)(screenWidth * 0.82);
         int panelH = (int)(screenHeight * 0.78);
         int panelX = (screenWidth - panelW) / 2;
