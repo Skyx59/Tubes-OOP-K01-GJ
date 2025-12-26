@@ -45,7 +45,7 @@ public class StageConfig {
             case 1:
                 return new StageConfig(
                         1,
-                        180,          // 3 menit
+                        5,          // 3 menit
                         3,            // maksimal 3 order aktif
                         1.0,          // normal spawn
                         1.0,          // normal reward
